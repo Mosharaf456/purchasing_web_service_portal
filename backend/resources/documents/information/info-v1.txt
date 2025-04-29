@@ -1,0 +1,239 @@
+///////////////////////Setup Start///////////////////
+USED for now:: 
+Latest LTS as of 2025
+> composer create-project laravel/laravel purchasing_web_service_portal_2 "12.*"
+
+
+> composer create-project laravel/laravel purchasing_web_service_portal_1
+both are same almost.
+
+
+> cd project-name
+// to see project verson
+> php artisan --version
+
+///////////////Setup DONE////////////
+
+> find . -iname "index*"
+Explanation:
+. : Search in current directory and subdirectories
+
+-iname : Case-insensitive name matching
+
+"index*" : Pattern to match files starting with "index" (case insensitive)
+For find, recursion is automatic when searching directories.
+For a more detailed find output:
+
+>find . -iname "index.php" -ls
+
+> grep -rni "index" .
+
+Where:
+
+-r : recursive
+
+-n : show line numbers
+
+-i : case insensitive
+
+-----------------------------------------
+# OAuth 2.0 Server (Passport)
+composer require laravel/passport
+
+# JWT Implementation (Choose ONE)
+composer require lcobucci/jwt      # Modern RFC-compliant JWT (Recommended)
+# OR
+composer require tymon/jwt-auth    # Traditional Laravel JWT
+
+# HTTP Client (Token Introspection)
+composer require guzzlehttp/guzzle
+
+///////////////Step 1: Install Core Packages
+
+# Install authentication packages
+composer require laravel/passport lcobucci/jwt guzzlehttp/guzzle fruitcake/laravel-cors predis/predis
+
+# Generate application key
+php artisan key:generate
+
+**Step 2: Configure Database & Migrations
+mysql -u root -p
+CREATE DATABASE purchasing_server;
+php artisan migrate
+
+
+# Create database and user
+mysql -u root -p
+CREATE DATABASE secure_api;
+CREATE USER 'api_user'@'localhost' IDENTIFIED BY 'strong_password';
+GRANT ALL PRIVILEGES ON secure_api.* TO 'api_user'@'localhost';
+FLUSH PRIVILEGES;
+
+# Update .env
+DB_DATABASE=secure_api
+DB_USERNAME=api_user
+DB_PASSWORD=strong_password
+
+# Run migrations
+php artisan migrate
+
+
+
+Step 3: Set Up Passport & JWT
+
+# Install Passport
+php artisan passport:install --force
+
+# Generate JWT secret
+php artisan tinker
+>>> file_put_contents(base_path('.env'), "\nJWT_SECRET=".base64_encode(random_bytes(32)), FILE_APPEND);
+>>> exit
+
+# Publish configurations
+php artisan vendor:publish --tag=passport-config
+php artisan vendor:publish --provider="Fruitcake\Cors\CorsServiceProvider"
+
+
+Step:4
+sudo apt install redis-server
+composer require predis/predis
+
+
+ste5
+# Optimize for production
+php artisan config:cache
+php artisan route:cache
+
+# Set file permissions
+sudo chown -R www-data:www-data /var/www/api
+sudo chmod -R 755 storage bootstrap/cache
+
+# Enable HTTPS
+sudo certbot --nginx -d api.yourdomain.com
+
+php artisan route:clear
+
+//project run
+php artisan serve
+
+
+///29 april
+mkdir -p app/Helpers
+
+touch app/Helpers/LogHelper.php
+
+composer dump-autoload
+
+php artisan route:list
+
+php artisan route:clear
+
+php artisan route:clear
+php artisan config:clear
+php artisan cache:clear
+
+
+it solve my issue "source/bootstrap/app.php" "  api: __DIR__.'/../routes/api.php', 
+"<?php
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )"
+
+php artisan route:list --path=api
+
+curl -X POST http://127.0.0.1:8000/api/v1/login   -H "Accept: application/json"   -H "Content-Type: application/json"   -d '{"email":"test@test.com","password":"secret"}'
+
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
+
+
+Comparing Tymon/JWT-Auth vs Lcobucci/JWT for Laravel
+Comparing Tymon/JWT-Auth vs Lcobucci/JWT for Laravel
+Both packages are excellent for JWT implementation in Laravel, but they serve slightly different purposes and have different strengths. Here's a comparison:
+
+Tymon/jwt-auth (tymon/jwt-auth)
+Purpose: Full-featured JWT authentication package specifically for Laravel
+
+Best for: Quick JWT auth setup with Laravel (includes guards, middleware, etc.)
+
+Pros:
+
+Laravel-specific integration (Auth provider, guards, etc.)
+
+Built-in token generation, refresh, and validation
+
+Includes helpful middleware (auth.jwt, refresh.token)
+
+Good documentation and community support
+
+Handles user authentication flow out of the box
+
+Cons:
+
+Less flexible if you need low-level JWT control
+
+Tied to Laravel's ecosystem
+
+Less frequent updates recently
+
+Lcobucci/JWT (lcobucci/jwt)
+Purpose: General-purpose JWT library (framework agnostic)
+
+Best for: Custom JWT implementations or when you need more control
+
+Pros:
+
+Pure JWT implementation (not tied to Laravel)
+
+More flexible for custom claims and validation
+
+Better for microservices or non-Laravel projects
+
+Actively maintained
+
+Higher performance for JWT operations
+
+Cons:
+
+Requires more manual setup for Laravel auth
+
+No built-in Laravel guards or middleware
+
+You'll need to write more boilerplate code
+
+Which One Should You Choose?
+Use tymon/jwt-auth if:
+✅ You want a quick, Laravel-optimized JWT auth solution
+✅ You need built-in middleware for protected routes
+✅ You prefer convention over configuration
+✅ You're building a traditional Laravel API
+
+Use lcobucci/jwt if:
+✅ You need full control over JWT creation/validation
+✅ You're building a microservice or non-Laravel project
+✅ You want a more lightweight, framework-agnostic solution
+✅ You're comfortable writing custom Laravel auth logic
+
+Performance Consideration
+lcobucci/jwt is generally faster for JWT operations since it's more lightweight
+
+tymon/jwt-auth adds Laravel-specific overhead but provides more features
+
+Recommendation for Your Use Case
+Since you're building a Laravel REST API with Google + username/password login, tymon/jwt-auth is likely the better choice because:
+
+It handles user authentication flow out of the box
+
+Integrates seamlessly with Laravel's auth system
+
+Reduces boilerplate code for token generation/refresh
+
+Works well with Socialite (Google login)
+
+However, if you anticipate needing more control over JWT claims or might use JWTs beyond authentication, lcobucci/jwt gives you more flexibility.
+
