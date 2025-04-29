@@ -1,2 +1,0 @@
-# purchase_web_service_portal
-purchase_web_service_portal
