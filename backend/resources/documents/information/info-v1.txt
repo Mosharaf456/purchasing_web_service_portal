@@ -237,3 +237,97 @@ Works well with Socialite (Google login)
 
 However, if you anticipate needing more control over JWT claims or might use JWTs beyond authentication, lcobucci/jwt gives you more flexibility.
 
+
+https://medium.com/@hosnyben/laravel-11-authentication-using-jwt-with-asymmetric-key-and-auth-middleware-e61c7e5303d5
+
+> composer require lcobucci/jwt
+
+We may want to have a folder to store our private/public key
+> mkdir storage/jwt
+# Create app/Helpers folder if it doesn't exists
+mkdir app/Helpers
+
+# Create the helper file
+touch app/Helpers/JwtHelper.php
+
+cd storage/jwt
+ Step-by-Step: Verify Private/Public Key Pair
+ //genrate private key
+> openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+ Extract the Public Key
+> openssl rsa -in private.pem -pubout -out public.pem
+ 3. Create a Test File
+ echo "Hello, RSA test" > test.txt
+
+4. Sign the File with the Private Key
+> openssl dgst -sha256 -sign private.pem -out signature.bin test.txt
+
+5. Verify the Signature with the Public Key
+> openssl dgst -sha256 -verify public.pem -signature signature.bin test.txt
+Output:
+If the keys match:
+Verified OK
+If they do not match (wrong public key or corrupted signature):
+Verification Failure
+
+Create JwtHelper
+To maintain consistent and clean code, let’s avoid redundancy by creating a custom helper. This helper will allow us to store and manage our custom JWT configuration effectively.
+
+Set up User eloquent model
+
+> php artisan make:migration AddUuidColumnToUsersTable
+
+// file path : source/database/migrations/2025_05_02_094553_add_uuid_column_to_users_table.php
+
+
+Have extra control over tokens
+To have control on generated tokens we may need to create a jwt_tokens table to store tokens and validate their important records like permissions, user_uuid, unique_id, description, expiration date, and maybe last used time.
+
+To have control over the generated tokens, we need to create a jwt_tokens table to store tokens and validate their important attributes, such as permissions, user_uuid, unique_id, description, expiration date, and possibly the last used time.
+
+We don’t have to create an eloquent model for that so let’s just create a migration file to create the table.
+
+# Create migration file
+php artisan make:migration CreateJwtTokensTable
+
+// source/database/migrations/2025_05_02_095028_create_jwt_tokens_table.php
+
+Token manipulation
+All token operations are related to User model. Let’s create a trait to create/destroy token.
+# Create app/Traits folder where we sotre the trait file
+> mkdir app/Traits
+
+# Create app/Traits/JWTAuthTrait.php file
+touch app/Traits/JWTAuthTrait.php
+
+Create custom guard
+
+# Create the folder
+mkdir app/Guards
+
+#create the guard file
+touch app/Guards/JwtGuard.php
+
+Authentication middlware with you custom guard in Action
+Now, the most important part is how to secure our HTTP requests using the newly configured guard. To do this, simply apply the auth:api middleware to your routes as follows:
+
+
+///purchasing_web_service_portal/backend/source
+> php artisan app:generate-token-keys
+php artisan app:generate-token-keys
+
+   ERROR  There are no commands defined in the "app" namespace.  
+
+///extra 
+First let’s create the console command file
+
+> php artisan make:command GenerateTokenKeys
+   INFO  Console command [app/Console/Commands/GenerateTokenKeys.php] created successfully.
+
+
+php artisan make:command RemoveExpiredTokens
+
+Now, we need to let the console executes everyday. Please open the routes/console.php file and add the following line in the end
+
+Schedule::command('app:remove-expired-tokens')->daily();
+
