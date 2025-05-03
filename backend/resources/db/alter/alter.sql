@@ -24,3 +24,8 @@ DROP TABLE password_reset_tokens;
 DROP TABLE sessions;
 
 
+INSERT INTO purchasing_server2.users
+(uuid, name, email, email_verified_at, password, remember_token, created_at, updated_at)
+VALUES('abcd', 'mh', 'mh@gmail.com', NOW(), '$2y$10$yX1zlaNFhSQAG6N8Cll6Rusa1j3y/rgMG6OtM7DaLpX7m25AK1TRu', '1', NOW(), NOW());
+
+

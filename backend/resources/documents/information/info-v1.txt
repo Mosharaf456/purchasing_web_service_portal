@@ -331,3 +331,12 @@ Now, we need to let the console executes everyday. Please open the routes/consol
 
 Schedule::command('app:remove-expired-tokens')->daily();
 
+https://emn178.github.io/online-tools/md5.html
+
+md5 hash 32 bit 
+
+//log 
+source/storage/logs
+//keys 
+/storage/app/jwt/private.pem
+

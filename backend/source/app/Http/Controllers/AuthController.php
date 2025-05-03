@@ -1,18 +1,26 @@
 <?php
 namespace App\Http\Controllers;
+use Illuminate\Http\Request;  // rest api
 
-use Illuminate\Http\Request;
-use App\Models\User; // Fixed import
-use Lcobucci\JWT\Configuration;
-use Lcobucci\JWT\Signer\Hmac\Sha256;
-use App\Helpers\LogHelper;
-use Illuminate\Validation\ValidationException; // Fixed import
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
+
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Lcobucci\JWT\Token\Builder;
+use Lcobucci\JWT\Token\RegisteredClaims;
+use Lcobucci\Clock\SystemClock;
+use DateTimeImmutable;
+
+use App\Helpers\JwtHelper;
+use App\Models\User; 
+
+use App\Helpers\LogHelper;
+use App\Traits\JWTAuthTrait;
+use Illuminate\Container\Attributes\Log;
 
 class AuthController extends Controller
 {
+    use JWTAuthTrait;
+    
     public function index(Request $request) 
     {
         return response()->json([
@@ -23,77 +31,71 @@ class AuthController extends Controller
     
     public function login(Request $request)
     {
+        
         try {
-            LogHelper::logToFile('log', 'Login api called1: ' . print_r(['a'=> 1], 1), 'error');
+            LogHelper::logToFile('log', 'Login api called........ ', 'error');
 
             $validated = $request->validate([
                 'email' => 'required|email',
-                'password' => 'required|min:12',
-                '2fa_code' => 'sometimes|numeric'
+                'password' => 'required|min:3',
             ]);
 
-            $user = User::where('email', $validated['email'])->firstOrFail();
-            LogHelper::logToFile('log', 'Login api called2: ' . print_r(['a'=> 1], 1), 'error');
+            LogHelper::logToFile('log', 'Login api called $validated: ' . print_r($validated, 1), 'error');
 
+            $user = User::where('email', $validated['email'])->first();
+            
+      
+            // LogHelper::logToFile('log', 'Login api called $user: ' . print_r($user, 1), 'error');
+
+           
+
+            if (!$user) {
+                return response()->json(['error' => 'Invalid credentials'], 401);
+            }
+           
+            // Accessing user values
+            $userId = $user->id;
+            $userEmail = $user->email;
+            $userPasswordHash = $user->password; // hashed password
+
+            LogHelper::logToFile('log', 'Login api called $userId: ' . print_r($userId, 1), 'error');
+            LogHelper::logToFile('log', 'Login api called $userEmail: ' . print_r($userEmail, 1), 'error');
+            LogHelper::logToFile('log', 'Login api called $userPasswordHash: ' . print_r($userPasswordHash, 1), 'error');
+            // Check if the password is correct
             if (!Hash::check($validated['password'], $user->password)) {
-                throw ValidationException::withMessages([
-                    'password' => ['The provided credentials are incorrect.'],
-                ]);
+                return response()->json(['error' => 'The provided credentials are incorrect.'], 422);
             }
 
-            // MFA Check
-            if ($user->mfa_secret && !$this->verifyMFA($user, $validated['2fa_code'] ?? '')) {
-                throw ValidationException::withMessages([
-                    '2fa_code' => ['Invalid MFA code.'],
-                ]);
-            }
 
-            $config = Configuration::forSymmetricSigner(
-                new Sha256(),
-                \Lcobucci\JWT\Signer\Key\InMemory::plainText(config('jwt.secret'))
-            );
+            
+            
+            
+            // $now = new DateTimeImmutable();
+            // $config = JwtHelper::getJwtConfiguration();
+            // $token = $config->builder()
+            //     ->issuedBy('purchasing-server') // Replace with your app name
+            //     ->permittedFor('purchasing-server-web') // Replace with your app name
+            //     ->identifiedBy(env('JWT_SECRET')) // Replace with your app name
+            //     ->issuedAt($now)
+            //     ->canOnlyBeUsedAfter($now)
+            //     ->expiresAt($now->modify('+1 hour'))
+            //     ->relatedTo((string)$userId)
+            //     ->getToken($config->signer(), $config->signingKey());
 
-            $token = $config->builder()
-                ->issuedBy(config('app.url'))
-                ->permittedFor(config('app.client_url'))
-                ->issuedAt(now()->toDateTimeImmutable())
-                ->expiresAt(now()->addHours(1)->toDateTimeImmutable())
-                ->withClaim('uid', $user->id)
-                ->getToken($config->signer(), $config->signingKey());
+            $token =  $user->createToken('authToken', '+1 hour');
 
             return response()->json([
-                'access_token' => $token->toString(),
+                // 'access_token' => $token->toString(),
+                'access_token' =>  $token,
                 'expires_in' => 3600
             ]);
-
-        } catch (ValidationException $e) {
-            LogHelper::logToFile('log', 'Validation error: ' . json_encode($e->errors()), 'error');
-            return response()->json([
-                'error' => 'Validation error',
-                'messages' => $e->errors()
-            ], 422);
-
-        } catch (ModelNotFoundException $e) {
-            LogHelper::logToFile('log', 'User not found: ' . $request->email, 'error');
-            return response()->json([
-                'error' => 'Invalid credentials',
-                'message' => 'Email or password is incorrect'
-            ], 401); // Don't reveal if user exists
-
-        } catch (QueryException $e) {
-            LogHelper::logToFile('log', 'Database error: ' . $e->getMessage(), 'error');
-
-            return response()->json([
-                'error' => 'Service unavailable',
-                'message' => 'Please try again later'
-            ], 503);
-
         } catch (\Exception $e) {
             LogHelper::logToFile('log', 'System error: ' . $e->getMessage(), 'error');
             return response()->json([
                 'error' => 'System error',
                 'message' => 'An unexpected error occurred'
             ], 500);
+
         }catch (\Throwable $e) {  // Catches everything else (PHP 7+)
             LogHelper::logToFile('log', 'CRITICAL: ' . $e->getMessage(), 'error');
             
@@ -104,11 +106,11 @@ class AuthController extends Controller
         }
     }
 
-    private function verifyMFA(User $user, string $code): bool
-    {
-        if (empty($user->mfa_secret)) return true;
+    // private function verifyMFA(User $user, string $code): bool
+    // {
+    //     if (empty($user->mfa_secret)) return true;
         
-        $google2fa = new \PragmaRX\Google2FA\Google2FA();
-        return $google2fa->verifyKey($user->mfa_secret, $code);
-    }
+    //     $google2fa = new \PragmaRX\Google2FA\Google2FA();
+    //     return $google2fa->verifyKey($user->mfa_secret, $code);
+    // }
 }

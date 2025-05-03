@@ -5,17 +5,27 @@ namespace App\Traits;
 use App\Helpers\JwtHelper;
 
 use Illuminate\Support\Facades\DB;
+use App\Helpers\LogHelper;
 
 trait JWTAuthTrait
 {
-    public function createToken(string $action = 'authToken', string $expiration = '+1 week'): string
+    public function createToken(string $action = 'authToken', string $expiration = '+1 hour'): string
     {
+        LogHelper::logToFile('log', 'createToken called with action: ' . $action . ' and expiration: ' . $expiration, 'error');
+
         // Ensure $this->uuid is a non-empty string
         if (empty($this->uuid)) {
+            LogHelper::logToFile('log', 'createToken called with empty uuid', 'error');
+            throw new \Exception('UUID is empty');
             return '';
         }
 
         $config = JwtHelper::getJwtConfiguration();
+        if (!$config) {
+            LogHelper::logToFile('log', 'createToken called with invalid config', 'error');
+            throw new \Exception('Invalid JWT configuration');
+            return '';
+        }
         $date = new \DateTimeImmutable();
         $uniqueID = uniqid();
 

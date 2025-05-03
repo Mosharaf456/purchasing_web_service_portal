@@ -14,13 +14,14 @@ class JwtHelper
         // Ensure that Storage::path('jwt/private.pem') returns a non-empty string
         $privateKeyPath = Storage::path('jwt/private.pem');
         if (empty($privateKeyPath)) {
-            throw new \InvalidArgumentException('Private key path cannot be empty.');
+            throw new \Exception('Private key path cannot be empty.');
         }
 
         // Ensure that Storage::path('jwt/public.pem') returns a non-empty string
         $publicKeyPath = Storage::path('jwt/public.pem');
         if (empty($publicKeyPath)) {
-            throw new \InvalidArgumentException('Public key path cannot be empty.');
+            // throw new \InvalidArgumentException('Public key path cannot be empty.');
+            throw new \Exception('Public key path cannot be empty.');
         }
         return Configuration::forAsymmetricSigner(
             new Sha256(),

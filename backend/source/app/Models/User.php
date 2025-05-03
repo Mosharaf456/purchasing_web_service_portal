@@ -1,22 +1,27 @@
 <?php
-use Laravel\Passport\HasApiTokens;
-use Lcobucci\JWT\Token;
-use Lcobucci\JWT\Validation\Constraint;
 
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable implements JWTSubject
+use App\Traits\JWTAuthTrait;
+
+class User extends Authenticatable
 {
-    use HasApiTokens;
+    use HasUuids;
+    use JWTAuthTrait;
 
-    public function getJWTIdentifier() {
-        return $this->getKey();
-    }
+    protected $fillable = [
+        'name', 'email', 'password'
+    ];
 
-    public function getJWTCustomClaims() {
-        return [
-            'ip' => request()->ip(),
-            'ua' => request()->userAgent()
-        ];
-    }
+    protected $hidden = [
+        'password', 'remember_token',
+    ];
+
+    // public function getToken() {
+    //     return $this->token;
+    // }
+
 }
